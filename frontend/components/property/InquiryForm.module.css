@@ -1,0 +1,21 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.title {
+  font-size: var(--text-lg);
+}
+
+.status {
+  font-size: var(--text-sm);
+}
+
+.statusOk {
+  color: var(--color-sage-deep);
+}
+
+.statusError {
+  color: var(--color-terracotta-deep);
+}

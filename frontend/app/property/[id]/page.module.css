@@ -1,0 +1,62 @@
+.back {
+  display: inline-block;
+  margin: var(--space-5) 0 var(--space-4);
+  font-size: var(--text-sm);
+}
+
+.imageWrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 7;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--color-sand);
+}
+
+.image {
+  object-fit: cover;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: var(--space-7);
+  align-items: start;
+  padding-bottom: var(--space-9);
+}
+
+@media (max-width: 760px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.name {
+  font-size: var(--text-2xl);
+  margin-top: var(--space-2);
+}
+
+.price {
+  font-family: var(--font-display);
+  color: var(--color-terracotta-deep);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  margin-top: var(--space-2);
+}
+
+.priceUnit {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-ink-muted);
+  font-weight: 400;
+}
+
+.description {
+  color: var(--color-ink);
+  line-height: var(--leading-relaxed);
+}
+
+.inquiryCard {
+  position: sticky;
+  top: var(--space-5);
+}

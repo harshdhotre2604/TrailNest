@@ -1,0 +1,27 @@
+.hero {
+  padding: var(--space-6) 0 var(--space-5);
+  max-width: 640px;
+}
+
+.headline {
+  font-size: var(--text-3xl);
+}
+
+.sub {
+  margin-top: var(--space-4);
+  color: var(--color-ink-muted);
+  font-size: var(--text-lg);
+  line-height: var(--leading-relaxed);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-5);
+  padding-bottom: var(--space-8);
+}
+
+.empty {
+  color: var(--color-ink-muted);
+  padding: var(--space-7) 0;
+}
