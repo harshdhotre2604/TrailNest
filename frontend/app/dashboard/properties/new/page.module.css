@@ -1,0 +1,29 @@
+.form {
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5) 0 var(--space-8);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+@media (max-width: 520px) {
+  .row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.error {
+  font-size: var(--text-sm);
+  color: var(--color-terracotta-deep);
+}
+
+.success {
+  font-size: var(--text-sm);
+  color: var(--color-sage-deep);
+}

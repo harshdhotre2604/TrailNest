@@ -1,0 +1,16 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--space-5);
+  padding: var(--space-5) 0;
+}
+
+.empty {
+  padding: var(--space-7) 0;
+  color: var(--color-ink-muted);
+}
+
+.error {
+  color: var(--color-terracotta-deep);
+  padding: var(--space-5) 0;
+}
