@@ -1,4 +1,11 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+// Server-side code (RSC data fetching) runs inside the frontend container and must
+// reach the backend over the Compose network (INTERNAL_API_URL=http://backend:4000/api).
+// Browser code can't see that hostname, so it uses NEXT_PUBLIC_API_URL instead, which
+// is baked in at build time and points at the backend's published host port.
+const API_URL =
+  typeof window === 'undefined'
+    ? process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'
+    : process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
 async function request(path, { method = 'GET', body, token } = {}) {
   const res = await fetch(`${API_URL}${path}`, {
