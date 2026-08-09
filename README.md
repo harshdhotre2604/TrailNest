@@ -13,9 +13,10 @@ A small, self-contained travel/property-listings app built as a DevOps capstone 
 
 ```
 trailnest/
-├── frontend/     # Next.js app (own package.json, own Dockerfile later)
-├── backend/      # Express API (own package.json, own Dockerfile later)
-├── db/           # schema.sql + seed.sql, mounted as init scripts by Docker Compose later
+├── frontend/     # Next.js app + Dockerfile
+├── backend/      # Express API + Dockerfile
+├── db/           # schema.sql + seed.sql, mounted as MySQL init scripts by Compose
+├── docker-compose.yml
 └── README.md
 ```
 
@@ -52,4 +53,29 @@ mysql -u root -p trailnest_dev < db/schema.sql
 mysql -u root -p trailnest_dev < db/seed.sql
 ```
 
-Docker/Compose setup comes in a later phase once the app itself is verified working.
+## Running with Docker Compose
+
+```bash
+cp .env.example .env   # fill in DB_ROOT_PASSWORD, DB_PASSWORD, JWT_SECRET
+docker compose up --build
+```
+
+This starts three services on a shared `trailnest` bridge network:
+
+| Service    | Container port | Published on host | Notes                                                        |
+|------------|-----------------|--------------------|----------------------------------------------------------------|
+| `db`       | 3306            | *(none)*           | `mysql:8.0`; `db/schema.sql` + `db/seed.sql` auto-run on first start via `/docker-entrypoint-initdb.d/` |
+| `backend`  | 4000            | 4000               | waits on `db`'s healthcheck before starting                   |
+| `frontend` | 3000            | 3000               | waits on `backend`'s healthcheck before starting               |
+
+Once all three report healthy (`docker compose ps`), open **http://localhost:3000**.
+
+**Why two different API URLs?** Server-rendered pages (the property grid, detail page) run *inside* the frontend container and reach the backend over the Compose network at `http://backend:4000/api` (set as `INTERNAL_API_URL`, read at runtime — no rebuild needed to change it). Code that runs in the visitor's browser (the inquiry form, login, dashboard) can't resolve that hostname, so it uses `NEXT_PUBLIC_API_URL` instead — a value baked into the JS bundle at *build time*, pointing at the backend's host-published port (`http://localhost:4000/api` locally; the public domain/IP once deployed to EC2). Changing `NEXT_PUBLIC_API_URL` means rebuilding the frontend image.
+
+**Local MySQL conflict:** the `db` service doesn't publish port 3306 to the host, since a local MySQL install (used for the non-Docker dev flow above) is usually already sitting on that port. Uncomment/add a `ports: ["3307:3306"]` mapping under `db` if you want a GUI tool to inspect the containerized database directly.
+
+Tear down with `docker compose down` (add `-v` to also drop the `db_data` volume and start from a fresh database next time).
+
+## AWS EC2 deployment
+
+Not yet — planned for the next phase once the Compose setup above is verified working end to end.
