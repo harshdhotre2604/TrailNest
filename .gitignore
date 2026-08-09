@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+backend/node_modules/
+
+# Env files
+.env
+.env.local
+.env.production
+frontend/.env*
+backend/.env
+backend/.env.production
+!*.env.example
+
+# Next.js build output
+frontend/.next/
+frontend/out/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker (added later)
+docker-compose.override.yml
