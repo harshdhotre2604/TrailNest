@@ -1,0 +1,22 @@
+.card {
+  background: var(--color-surface);
+  border: var(--border-hairline);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.padded {
+  padding: var(--space-5);
+}
+
+.interactive {
+  transition: border-color var(--duration-standard) var(--ease-standard),
+    transform var(--duration-standard) var(--ease-standard);
+}
+
+.interactive:hover {
+  border-color: var(--color-border-strong);
+  transform: translateY(-2px);
+}

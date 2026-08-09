@@ -1,0 +1,82 @@
+/*
+  TrailNest design tokens.
+  Palette: nature pastel — cream canvas, sand surfaces, sage + terracotta accents.
+  Every color, spacing, and type value used in the app should trace back here.
+*/
+
+:root {
+  /* ---- Color: surfaces ---- */
+  --color-bg: #f3eee2;          /* page canvas — soft cream */
+  --color-surface: #fbf8f2;     /* cards, panels — warm off-white, sits just above bg */
+  --color-surface-sunk: #ece3d2;/* recessed surfaces — inputs, tags */
+  --color-sand: #e4d9c4;        /* sand-toned fills — badges, hover states */
+  --color-border: #ddd2be;      /* low-contrast hairline borders */
+  --color-border-strong: #c9b99c;
+
+  /* ---- Color: accents ---- */
+  --color-sage: #7c8f6e;         /* decorative sage — icons, large text, fills */
+  --color-sage-deep: #47543d;    /* text-safe sage — labels, links (AA on cream) */
+  --color-terracotta: #bc6b45;   /* primary CTA fill */
+  --color-terracotta-deep: #8a4c2e; /* text-safe terracotta, hover/active */
+
+  /* ---- Color: text ---- */
+  --color-ink: #322e27;          /* primary text, warm near-black */
+  --color-ink-muted: #6b6459;    /* secondary text */
+  --color-ink-faint: #948b7c;    /* placeholders, disabled */
+  --color-on-accent: #fbf8f2;    /* text on filled terracotta/sage buttons */
+
+  /* ---- Color: status (leads) ---- */
+  --color-status-new: #8a4c2e;
+  --color-status-contacted: #7c8f6e;
+  --color-status-closed: #948b7c;
+
+  /* ---- Spacing scale (4px base) ---- */
+  --space-1: 0.25rem;  /* 4px */
+  --space-2: 0.5rem;   /* 8px */
+  --space-3: 0.75rem;  /* 12px */
+  --space-4: 1rem;     /* 16px */
+  --space-5: 1.5rem;   /* 24px */
+  --space-6: 2rem;     /* 32px */
+  --space-7: 3rem;     /* 48px */
+  --space-8: 4rem;     /* 64px */
+  --space-9: 6rem;     /* 96px */
+
+  /* ---- Radius ---- */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  /* ---- Typography ---- */
+  --font-display: var(--font-fraunces), Georgia, serif;
+  --font-body: var(--font-karla), -apple-system, sans-serif;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1.0625rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.75rem;
+  --text-2xl: 2.25rem;
+  --text-3xl: 3rem;
+
+  --leading-tight: 1.2;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.7;
+
+  --tracking-wide: 0.06em;
+  --tracking-wider: 0.1em;
+
+  /* ---- Motion ---- */
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --duration-fast: 120ms;
+  --duration-standard: 200ms;
+
+  /* ---- Elevation: intentionally none — surfaces are separated by fill + border, not shadow ---- */
+  --border-hairline: 1px solid var(--color-border);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-standard: 0ms;
+  }
+}

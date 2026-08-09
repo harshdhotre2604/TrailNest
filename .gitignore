@@ -11,6 +11,7 @@ frontend/.env*
 backend/.env
 backend/.env.production
 !*.env.example
+!frontend/.env.local.example
 
 # Next.js build output
 frontend/.next/
