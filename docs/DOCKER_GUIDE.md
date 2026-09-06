@@ -437,8 +437,22 @@ code inside the frontend container successfully reached the backend container ov
    ps` showing green. Hit an endpoint that proves data actually flows between
    containers, the way the SSR check does here.
 
-## 8. What's next
+## 8. EC2 deployment
 
-EC2 deployment: provisioning an Ubuntu instance, security groups (SSH from your IP
-only; HTTP/HTTPS public), installing Docker + the Compose plugin, and getting this
-same `docker-compose.yml` running there with real secrets instead of local dev ones.
+Two stages, both driven by the same `docker-compose.yml`:
+
+- **Stage A — plain HTTP.** Provision an Ubuntu t3.small, add 2 GB swap (the
+  frontend `next build` is memory-hungry), install Docker Engine + the Compose
+  plugin from Docker's apt repo, `git clone`, write a real `.env` (strong secrets,
+  public `NEXT_PUBLIC_API_URL` / `CORS_ORIGIN`), `docker compose build && up -d`.
+  Security group: SSH from your IP, plus 80/443 and — temporarily — 3000/4000.
+- **Stage B — nginx + HTTPS.** `docker-compose.prod.yml` adds an `nginx` service
+  that reverse-proxies `/` to the frontend and `/api` + `/uploads` to the backend,
+  and sets `TRUST_PROXY=1` on the backend. A free `<elastic-ip>.nip.io` hostname
+  plus a certbot webroot challenge gets a real Let's Encrypt cert — no domain
+  purchase. Then close 3000/4000 in the security group.
+
+Config lives in `nginx/conf.d/trailnest.conf` (ships HTTP-only, with the HTTPS
+server block commented at the bottom to paste in once the cert exists) and the
+`docker-compose.prod.yml` header. Full step-by-step with per-step verification is
+in the deployment runbook.

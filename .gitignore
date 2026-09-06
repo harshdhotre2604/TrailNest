@@ -21,6 +21,12 @@ frontend/out/
 # volume in prod; local files are dev-only test data)
 backend/uploads/
 
+# TLS material and ACME challenge scratch (created on the server by certbot)
+nginx/letsencrypt/*
+nginx/certbot-www/*
+!nginx/letsencrypt/.gitkeep
+!nginx/certbot-www/.gitkeep
+
 # Logs
 *.log
 npm-debug.log*

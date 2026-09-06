@@ -1,0 +1,44 @@
+# Production overlay — adds an nginx reverse proxy in front of frontend + backend
+# and terminates TLS there. Layered on top of docker-compose.yml, it does not
+# touch the db / backend / frontend service definitions beyond adding TRUST_PROXY.
+#
+# On the EC2 box, always pass both files:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml logs -f nginx
+#
+# TLS certificate (one-time, after nginx is up and port 80 is reachable):
+#
+#   mkdir -p nginx/letsencrypt nginx/certbot-www
+#   docker run --rm \
+#     -v "$PWD/nginx/letsencrypt:/etc/letsencrypt" \
+#     -v "$PWD/nginx/certbot-www:/var/www/certbot" \
+#     certbot/certbot certonly --webroot -w /var/www/certbot \
+#     -d YOUR_HOST.nip.io --email you@example.com --agree-tos --no-eff-email --non-interactive
+#
+# Then swap nginx/conf.d/trailnest.conf to the HTTPS server block (see the
+# deployment runbook) and: docker compose ... exec nginx nginx -s reload
+
+services:
+  backend:
+    environment:
+      # Enables app.set('trust proxy', 1) — see backend/src/app.js.
+      TRUST_PROXY: '1'
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      frontend:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/letsencrypt:/etc/letsencrypt:ro
+      - ./nginx/certbot-www:/var/www/certbot:ro
+    networks: [trailnest]
