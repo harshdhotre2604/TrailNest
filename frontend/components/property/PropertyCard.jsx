@@ -1,19 +1,19 @@
 import Link from 'next/link';
-import Image from 'next/image';
 import Card from '@/components/ui/Card';
+import { assetUrl } from '@/lib/api';
 import styles from './PropertyCard.module.css';
 
 export default function PropertyCard({ property }) {
   return (
     <Card as={Link} href={`/property/${property.id}`} interactive className={styles.card}>
       <div className={styles.imageWrap}>
-        {property.cover_image_url && (
-          <Image
-            src={property.cover_image_url}
+        {property.primary_image_url && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={assetUrl(property.primary_image_url)}
             alt={property.name}
-            fill
-            sizes="(max-width: 700px) 100vw, 33vw"
             className={styles.image}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
           />
         )}
       </div>

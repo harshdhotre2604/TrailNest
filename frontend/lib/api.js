@@ -7,14 +7,25 @@ const API_URL =
     ? process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'
     : process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
+// Prefix a backend-relative asset path (e.g. /uploads/properties/xyz.jpg) with the
+// browser-facing API origin. Leaves already-absolute URLs (legacy seed data) untouched.
+export function assetUrl(imagePath) {
+  if (!imagePath) return imagePath;
+  if (/^https?:\/\//i.test(imagePath)) return imagePath;
+  const origin = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api').replace(/\/api\/?$/, '');
+  return `${origin}${imagePath}`;
+}
+
 async function request(path, { method = 'GET', body, token } = {}) {
+  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+
   const res = await fetch(`${API_URL}${path}`, {
     method,
     headers: {
-      'Content-Type': 'application/json',
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: body ? JSON.stringify(body) : undefined,
+    body: body ? (isFormData ? body : JSON.stringify(body)) : undefined,
     cache: 'no-store',
   });
 
@@ -31,8 +42,13 @@ export const api = {
   listProperties: () => request('/properties'),
   getProperty: (id) => request(`/properties/${id}`),
   listMyProperties: (token) => request('/properties/mine', { token }),
-  createProperty: (payload, token) =>
-    request('/properties', { method: 'POST', body: payload, token }),
+  createProperty: (formData, token) =>
+    request('/properties', { method: 'POST', body: formData, token }),
+  analyzeProperty: (formData, token) =>
+    request('/ai/analyze-property', { method: 'POST', body: formData, token }),
+  draftPropertyFromAi: (formData, token) =>
+    request('/ai/draft-property', { method: 'POST', body: formData, token }),
+  listAmenities: () => request('/amenities'),
   createLead: (propertyId, payload) =>
     request(`/properties/${propertyId}/leads`, { method: 'POST', body: payload }),
   listLeads: (token) => request('/leads', { token }),

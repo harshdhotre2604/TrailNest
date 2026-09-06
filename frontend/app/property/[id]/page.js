@@ -1,7 +1,6 @@
 import Link from 'next/link';
-import Image from 'next/image';
 import { notFound } from 'next/navigation';
-import { api } from '@/lib/api';
+import { api, assetUrl } from '@/lib/api';
 import Card from '@/components/ui/Card';
 import InquiryForm from '@/components/property/InquiryForm';
 import styles from './page.module.css';
@@ -24,14 +23,13 @@ export default async function PropertyDetailPage({ params }) {
       </Link>
 
       <div className={styles.imageWrap}>
-        {property.cover_image_url && (
-          <Image
-            src={property.cover_image_url}
+        {property.primary_image_url && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={assetUrl(property.primary_image_url)}
             alt={property.name}
-            fill
-            sizes="(max-width: 760px) 100vw, 1080px"
             className={styles.image}
-            priority
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
           />
         )}
       </div>
