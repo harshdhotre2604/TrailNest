@@ -141,23 +141,23 @@ this isn't just a prompt instruction.
 ## 3. Known gaps / not yet cleaned up
 
 - ~~**`docker-compose.yml` still doesn't pass `GEMINI_API_KEY` through to the backend
-  container**~~ — fixed: the backend service now takes `GEMINI_API_KEY: ${GEMINI_API_KEY:-}`
-  and `.env.example` documents it as optional (both endpoints already degrade gracefully when
-  it's blank). Not yet verified through an actual `docker compose up` — see the MySQL 8.0 note
-  below.
-- **Local dev MySQL is actually MariaDB 10.4**, not the `mysql:8.0` `docker-compose.yml`
-  defines — Docker Desktop wasn't running during this work, so testing went directly against a
-  local MariaDB install instead. Schema/seed SQL was written against MySQL 8.0 syntax and
-  happened to work fine on MariaDB 10.4, but this hasn't been verified against the actual
-  `mysql:8.0` container.
+  container**~~ — fixed and verified: the backend service takes `GEMINI_API_KEY: ${GEMINI_API_KEY:-}`,
+  `.env.example` documents it as optional, and a full `docker compose up` on 2026-09-06
+  confirmed both AI endpoints working through the container (`/api/ai/analyze-property` and
+  `/api/ai/draft-property` both returned real Gemini output).
+- ~~**Local dev MySQL is actually MariaDB 10.4**, not the `mysql:8.0` the compose file
+  defines~~ — resolved: verified against the real `mysql:8.0` container on 2026-09-06. Fresh
+  `docker compose down -v` + `up` ran all three init scripts (`01-schema` / `02-seed` /
+  `03-seed-amenities`) with no errors; 20 tables created, seed counts correct (6 properties,
+  24 amenities, 4 leads).
 - **Feature B's location guess is free text**, not matched against our hardcoded state/city
   list (that list is too small to meaningfully constrain a real address to). When it doesn't
   match, the wizard falls back to the "custom location" path and the owner may still need to
   manually pick a state from the dropdown to satisfy validation.
-- **`.docx` extraction hasn't been exercised through a live end-to-end request** — verified via
-  a direct script call to `docText.js` with a plain buffer and by code review (`mammoth` is a
-  mature, narrowly-used dependency here), but not by actually uploading a real `.docx` through
-  the browser. Photos, PDF-shaped calls, text, and link input were all verified live.
+- ~~**`.docx` extraction hasn't been exercised through a live end-to-end request**~~ — done
+  2026-09-06: a real `.docx` posted to `/api/ai/draft-property` through the running container
+  was extracted by `mammoth` and produced a correct structured draft (title, category, city,
+  matched amenities). Photos, PDF, text, and link input were already verified live.
 - The stale **"Om Farm & Resort"** test property mentioned in earlier notes no longer exists —
   the local `trailnest_dev` database was dropped and recreated from the current
   `db/schema.sql` + seed files while building the 13-step wizard (needed to pick up ~14 new
