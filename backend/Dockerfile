@@ -13,6 +13,8 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY package.json ./
 COPY src ./src
 
+RUN mkdir -p uploads/properties && chown -R node:node uploads
+
 USER node
 EXPOSE 4000
 

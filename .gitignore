@@ -17,6 +17,10 @@ backend/.env.production
 frontend/.next/
 frontend/out/
 
+# Runtime-uploaded property media (persisted via the backend_uploads Docker
+# volume in prod; local files are dev-only test data)
+backend/uploads/
+
 # Logs
 *.log
 npm-debug.log*

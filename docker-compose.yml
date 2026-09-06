@@ -11,6 +11,7 @@ services:
       - db_data:/var/lib/mysql
       - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
       - ./db/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+      - ./db/seed_amenities.sql:/docker-entrypoint-initdb.d/03-seed-amenities.sql:ro
     # No host port published: backend reaches this over the internal "trailnest"
     # network only. Add `ports: ["3307:3306"]` locally if you want GUI-tool access
     # (3306 is likely already taken by a host MySQL install, as it is here).
@@ -39,8 +40,14 @@ services:
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       JWT_EXPIRES_IN: 7d
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      # Optional: enables the "Polish with AI" / "AI Form Helper" features. The
+      # app runs fine without it — both endpoints degrade gracefully to a
+      # "temporarily unavailable" message when the key is missing or empty.
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
     ports:
       - '4000:4000'
+    volumes:
+      - backend_uploads:/app/uploads
     healthcheck:
       test: ['CMD', 'node', '-e', "fetch('http://localhost:4000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 10s
@@ -73,6 +80,7 @@ services:
 
 volumes:
   db_data:
+  backend_uploads:
 
 networks:
   trailnest:

@@ -29,6 +29,11 @@ INSERT INTO properties (owner_id, name, type, location, price_per_night, cover_i
     95.00, 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800',
     'A sun-washed adobe loft above a quiet courtyard, a short walk from the plaza, with kiva fireplaces and hand-plastered walls.');
 
+-- Amenities are seeded separately in db/seed_amenities.sql (loaded as
+-- 03-seed-amenities.sql by docker-compose; run it by hand after this file for
+-- the non-Docker flow). Kept out of here so there's a single source of truth
+-- for the amenity catalog, including the room/restricted types.
+
 INSERT INTO leads (property_id, name, email, message, status) VALUES
   (1, 'Priya Menon', 'priya.menon@example.com', 'Is Ridgeview Cabin available the second week of October? Traveling with one other person.', 'new'),
   (2, 'Marcus Feld', 'marcus.feld@example.com', 'Would love to bring our dog along to Willow Creek Farmstay — is that alright?', 'contacted'),

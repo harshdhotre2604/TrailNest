@@ -51,6 +51,7 @@ Create the database and load the schema/seed data:
 mysql -u root -p -e "CREATE DATABASE trailnest_dev"
 mysql -u root -p trailnest_dev < db/schema.sql
 mysql -u root -p trailnest_dev < db/seed.sql
+mysql -u root -p trailnest_dev < db/seed_amenities.sql
 ```
 
 ## Running with Docker Compose
