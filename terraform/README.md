@@ -1,55 +1,72 @@
-# TrailNest — Terraform (Infrastructure as Code)
+# TrailNest — Terraform (reference architecture)
 
-Provisions a **separate, disposable** EC2 instance + security group + Elastic IP for
-TrailNest — deliberately not the real, already-running instance from the manual
-Phase 3 deploy. The point of this exercise is to prove the full
-create → verify → destroy lifecycle, including `terraform destroy`, which isn't
-something you want to run against a box that's actually serving traffic.
+Provisions the full assignment reference architecture: a VPC across 2 AZs,
+public/private/secure subnet tiers, one NAT Gateway, an Application Load
+Balancer doing path-based routing, an Auto Scaling Group of app instances,
+a Multi-AZ RDS MySQL database, and a CloudWatch log group. Route 53 is
+intentionally skipped — the app is reached at the ALB's own AWS DNS name.
 
-## What it creates
+Full design rationale, diagram, and phased plan:
+https://claude.ai/code/artifact/80eff783-9bcc-4f18-91a9-7bd6378a9e95
 
-| Resource | Purpose |
-|---|---|
-| `data.aws_ami.ubuntu` | looks up the latest Ubuntu 24.04 AMI at apply-time (not hardcoded — AMI ids go stale) |
-| `aws_security_group.trailnest` | SSH (your IP only) + ports 3000/4000 |
-| `aws_instance.trailnest` | `t3.small`, 20 GB root disk (the exact fix for the disk-space issue hit during the manual deploy) |
-| `aws_eip.trailnest` | a fixed public IP, so it survives stop/start |
+## What it creates (15 resources — see the plan link above for the why on each)
+
+VPC, 6 subnets, Internet Gateway, 1 NAT Gateway + EIP, 3 route tables,
+3 security groups (ALB / app / RDS, each open only to the tier in front of
+it), a DB subnet group, a Multi-AZ RDS instance, 3 SSM SecureString
+parameters (DB password, JWT secret, Gemini key — Terraform generates the
+first two itself via `random_password`), a narrowly-scoped IAM role for the
+app instances (can read only those 3 parameters, nothing else), a Launch
+Template whose boot script turns a bare Ubuntu instance into a working
+TrailNest node with zero manual steps, 2 target groups + the ALB + listener
+rules, and an Auto Scaling Group.
+
+**No SSH on the app instances at all.** They sit in a private subnet with
+no route to the internet inbound; if you ever need a shell,
+`aws ssm start-session --target <instance-id>` gets you in over AWS's own
+private channel instead.
 
 ## One-time setup
 
-1. **AWS credentials**, if not already configured: `aws configure` (or SSO). Terraform
-   uses whatever the AWS CLI is configured with.
-2. **An EC2 key pair** in the region you're deploying to (`var.aws_region`) — reuse
-   an existing one, or create a new one in that region.
-3. `cp terraform.tfvars.example terraform.tfvars` and fill in `key_name` and
-   `my_ip_cidr` (get your IP from https://checkip.amazonaws.com).
+Nothing — every variable has a default. Optionally set `gemini_api_key` in
+`terraform.tfvars` if you want the AI features working on this architecture.
 
 ## Workflow
 
+Run from the EC2 instance with the `trailnest-terraform-runner` IAM role
+attached (or from anywhere else with equivalent AWS credentials):
+
 ```bash
-terraform init      # downloads the AWS provider plugin
-terraform plan       # dry run — review exactly what will be created, nothing changes yet
-terraform apply       # type "yes" — actually creates it
+terraform init
+terraform plan       # dry run — review before anything is created
+terraform apply       # type "yes"
 ```
 
-Grab `instance_public_ip` (or the ready-made `ssh_command` output) and SSH in. From
-there, the deployment is identical to the manual Phase 3 steps: clone the repo, write
-`.env`, `docker compose build`, `docker compose up -d`, verify in the browser.
-
-When you're done proving it out:
+Wait for both ASG instances to show healthy in both target groups (a few
+minutes — the boot script installs Docker, clones the repo, loads the
+schema into RDS, and builds two images), then open the `alb_dns_name`
+output in a browser.
 
 ```bash
-terraform destroy   # type "yes" — deletes the instance, security group, and EIP
+terraform destroy   # type "yes" — tears down all 15 resources
 ```
 
 ## Files
 
-- `main.tf` — provider + resources
-- `variables.tf` — inputs (region, key pair, your IP, instance size, disk size)
-- `outputs.tf` — the instance's public IP and a ready-to-paste SSH command
-- `terraform.tfvars.example` — template; copy to `terraform.tfvars` (gitignored) with real values
+| File | Contents |
+|---|---|
+| `versions.tf` | provider + required versions |
+| `data.tf` | AMI lookup, AZ lookup, caller identity |
+| `vpc.tf` | VPC, subnets, IGW, NAT, route tables |
+| `security_groups.tf` | ALB / app / RDS security groups |
+| `secrets.tf` | generated passwords + SSM SecureString parameters |
+| `iam.tf` | the app instances' narrowly-scoped IAM role |
+| `rds.tf` | DB subnet group + Multi-AZ RDS instance |
+| `alb.tf` | target groups, ALB, listener, path-based routing rule |
+| `compute.tf` | Launch Template (+ boot script) and Auto Scaling Group |
+| `logs.tf` | CloudWatch log group |
+| `templates/user_data.sh.tftpl` | the boot script every app instance runs |
+| `variables.tf` / `outputs.tf` | inputs (all have defaults) / outputs |
 
-`terraform.tfstate`, `.terraform/`, and `terraform.tfvars` are gitignored — the state
-file can contain resource details you don't want in git, and `.terraform/` is just a
-local plugin cache. `.terraform.lock.hcl` **is** committed, so the exact provider
-version is pinned for anyone else who runs this.
+`terraform.tfstate`, `.terraform/`, and `terraform.tfvars` are gitignored.
+`.terraform.lock.hcl` **is** committed, pinning the exact provider versions.

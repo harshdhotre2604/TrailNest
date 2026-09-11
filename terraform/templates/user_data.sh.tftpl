@@ -1,0 +1,50 @@
+#!/bin/bash
+# Runs once, on every instance the Auto Scaling Group ever launches (including
+# replacements during a GitHub Actions instance refresh). Turns a bare Ubuntu
+# boot into a fully working TrailNest node with zero manual steps.
+set -euo pipefail
+exec > >(tee /var/log/trailnest-boot.log) 2>&1
+
+echo "=== TrailNest boot script starting: $(date) ==="
+
+curl -fsSL https://get.docker.com | sh
+usermod -aG docker ubuntu
+
+# --- fetch secrets: this instance's IAM role permits reading only these
+# three parameters (see terraform/iam.tf) ---
+DB_PASSWORD=$(aws ssm get-parameter --region ${aws_region} --name /trailnest/db_password --with-decryption --query Parameter.Value --output text)
+JWT_SECRET=$(aws ssm get-parameter --region ${aws_region} --name /trailnest/jwt_secret --with-decryption --query Parameter.Value --output text)
+GEMINI_API_KEY=$(aws ssm get-parameter --region ${aws_region} --name /trailnest/gemini_key --with-decryption --query Parameter.Value --output text)
+if [ "$GEMINI_API_KEY" = "unset" ]; then GEMINI_API_KEY=""; fi
+
+git clone https://github.com/harshdhotre2604/TrailNest.git /home/ubuntu/TrailNest
+cd /home/ubuntu/TrailNest
+
+cat > .env <<EOF
+DB_HOST=${rds_endpoint}
+DB_PORT=3306
+DB_USER=${db_username}
+DB_PASSWORD=$DB_PASSWORD
+DB_NAME=${db_name}
+JWT_SECRET=$JWT_SECRET
+CORS_ORIGIN=http://${alb_dns_name}
+NEXT_PUBLIC_API_URL=http://${alb_dns_name}/api
+GEMINI_API_KEY=$GEMINI_API_KEY
+# docker-compose.rds.yml disables the local db service entirely, but the base
+# docker-compose.yml still requires this variable to *exist* during Compose's
+# variable interpolation, even for a service that never starts. Unused.
+DB_ROOT_PASSWORD=unused-service-never-starts
+EOF
+
+# --- load schema/seed against RDS. Idempotent (CREATE TABLE IF NOT EXISTS /
+# INSERT IGNORE) so re-running this on every boot, from every instance, is
+# safe — RDS has no equivalent of Docker's docker-entrypoint-initdb.d. ---
+export MYSQL_PWD="$DB_PASSWORD"
+mysql -h ${rds_endpoint} -u ${db_username} ${db_name} < db/schema.sql
+mysql -h ${rds_endpoint} -u ${db_username} ${db_name} < db/seed.sql
+mysql -h ${rds_endpoint} -u ${db_username} ${db_name} < db/seed_amenities.sql
+unset MYSQL_PWD
+
+docker compose -f docker-compose.yml -f docker-compose.rds.yml up -d --build
+
+echo "=== TrailNest boot script finished: $(date) ==="

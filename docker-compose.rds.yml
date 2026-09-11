@@ -1,0 +1,33 @@
+# Used on the Terraform-provisioned ASG instances only:
+#   docker compose -f docker-compose.yml -f docker-compose.rds.yml up -d --build
+#
+# Removes the local MySQL container — the database is RDS instead — and
+# points the backend at it. docker-compose.yml itself is untouched, so local
+# dev and the original Phase 3 box keep their own containerized MySQL exactly
+# as before.
+
+services:
+  # "donotstart" is never a profile anything activates, so this service
+  # never runs — but Compose still interpolates every service's config up
+  # front, before profile filtering happens. That means the base file's
+  # `${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD is required}` would still fail
+  # `docker compose up` even though `db` never starts, unless it's
+  # overridden here with a plain value (verified empirically — this isn't
+  # a hypothetical).
+  db:
+    profiles: ["donotstart"]
+    environment:
+      # DB_ROOT_PASSWORD is the one required var this deployment never sets
+      # (DB_PASSWORD is set — to the real RDS password — so MYSQL_PASSWORD's
+      # own required-check already resolves fine without help).
+      MYSQL_ROOT_PASSWORD: unused-service-never-starts
+
+  backend:
+    # An empty map (`{}`) here would silently be a no-op — Compose only
+    # merges individual keys, so a base-file key survives untouched unless
+    # explicitly reset. `!reset` (Compose Specification) is the real way to
+    # clear it — verified: `{}` was tested first and confirmed not to work.
+    depends_on: !reset null
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT:-3306}
