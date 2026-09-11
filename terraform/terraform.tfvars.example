@@ -1,0 +1,6 @@
+# Copy to terraform.tfvars (same directory) and fill in real values.
+# terraform.tfvars is gitignored — never commit it.
+
+aws_region = "ap-south-1"          # must match the region key_name below lives in
+key_name   = "trailnest-key"        # an EC2 key pair that already exists in that region
+my_ip_cidr = "203.0.113.10/32"      # your public IP — https://checkip.amazonaws.com
