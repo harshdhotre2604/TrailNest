@@ -22,11 +22,12 @@ resource "aws_launch_template" "trailnest" {
   }
 
   user_data = base64encode(templatefile("${path.module}/templates/user_data.sh.tftpl", {
-    aws_region   = var.aws_region
-    rds_endpoint = aws_db_instance.trailnest.address
-    db_username  = var.db_username
-    db_name      = var.db_name
-    alb_dns_name = aws_lb.trailnest.dns_name
+    aws_region         = var.aws_region
+    rds_endpoint       = aws_db_instance.trailnest.address
+    db_username        = var.db_username
+    db_name            = var.db_name
+    alb_dns_name       = aws_lb.trailnest.dns_name
+    dockerhub_username = var.dockerhub_username
   }))
 
   tag_specifications {

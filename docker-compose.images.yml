@@ -1,0 +1,19 @@
+# Used on the Terraform-provisioned ASG instances, alongside docker-compose.rds.yml:
+#   docker compose -f docker-compose.yml -f docker-compose.rds.yml -f docker-compose.images.yml pull
+#   docker compose -f docker-compose.yml -f docker-compose.rds.yml -f docker-compose.images.yml up -d
+#
+# Swaps `build: context: ...` for `image: ...` so instances PULL pre-built
+# images from Docker Hub instead of building from source — the actual point
+# of Phase 4. Building on a t3.small during every boot/scale-out/deploy is
+# the exact disk-and-CPU risk the original Phase 3 disk-space incident
+# demonstrated; GitHub's runner does that work instead, once, and these
+# instances only ever pull the finished result.
+
+services:
+  backend:
+    build: !reset null
+    image: ${DOCKERHUB_USERNAME}/trailnest-backend:latest
+
+  frontend:
+    build: !reset null
+    image: ${DOCKERHUB_USERNAME}/trailnest-frontend:latest

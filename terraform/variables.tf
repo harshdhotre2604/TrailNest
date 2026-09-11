@@ -38,6 +38,12 @@ variable "db_username" {
   default = "trailnest"
 }
 
+variable "dockerhub_username" {
+  description = "Docker Hub account the images live at: <username>/trailnest-backend, <username>/trailnest-frontend. Must match the same account GitHub Actions pushes to."
+  type        = string
+  default     = "harshdhotre2604"
+}
+
 variable "gemini_api_key" {
   description = "Optional — Google Gemini API key for the AI features. Leave blank to run without them."
   type        = string

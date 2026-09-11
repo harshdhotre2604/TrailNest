@@ -26,6 +26,20 @@ no route to the internet inbound; if you ever need a shell,
 `aws ssm start-session --target <instance-id>` gets you in over AWS's own
 private channel instead.
 
+**Instances pull images, they don't build them.** The boot script clones
+the repo (for the compose files and `db/*.sql`) but runs
+`docker compose -f docker-compose.yml -f docker-compose.rds.yml -f docker-compose.images.yml pull/up`
+— `docker-compose.images.yml` (repo root) swaps `build:` for `image:
+<dockerhub-username>/trailnest-{backend,frontend}:latest`. Building on a
+t3.small on every boot/scale-out is the exact risk the original disk-space
+incident demonstrated; `.github/workflows/deploy.yml` builds once, on
+GitHub's runner, and pushes the result.
+
+**Bootstrap order for a first `apply`:** the images must already exist in
+Docker Hub before any instance boots, or its first `pull` fails. Either
+push to `main` once (so the workflow builds+pushes) before running
+`terraform apply` for the first time, or `docker build`/`push` by hand once.
+
 ## One-time setup
 
 Nothing — every variable has a default. Optionally set `gemini_api_key` in

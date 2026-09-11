@@ -9,6 +9,8 @@ echo "=== TrailNest boot script starting: $(date) ==="
 
 curl -fsSL https://get.docker.com | sh
 usermod -aG docker ubuntu
+apt-get update -y
+apt-get install -y mysql-client
 
 # --- fetch secrets: this instance's IAM role permits reading only these
 # three parameters (see terraform/iam.tf) ---
@@ -34,6 +36,7 @@ GEMINI_API_KEY=$GEMINI_API_KEY
 # docker-compose.yml still requires this variable to *exist* during Compose's
 # variable interpolation, even for a service that never starts. Unused.
 DB_ROOT_PASSWORD=unused-service-never-starts
+DOCKERHUB_USERNAME=${dockerhub_username}
 EOF
 
 # --- load schema/seed against RDS. Idempotent (CREATE TABLE IF NOT EXISTS /
@@ -45,6 +48,12 @@ mysql -h ${rds_endpoint} -u ${db_username} ${db_name} < db/seed.sql
 mysql -h ${rds_endpoint} -u ${db_username} ${db_name} < db/seed_amenities.sql
 unset MYSQL_PWD
 
-docker compose -f docker-compose.yml -f docker-compose.rds.yml up -d --build
+# Pull the pre-built images GitHub Actions already pushed — nothing gets
+# built on this instance. (docker login isn't needed here: the repos are
+# public. If they were ever made private, this instance's role would also
+# need a Docker Hub credential fetched from SSM the same way the three
+# secrets above are.)
+docker compose -f docker-compose.yml -f docker-compose.rds.yml -f docker-compose.images.yml pull
+docker compose -f docker-compose.yml -f docker-compose.rds.yml -f docker-compose.images.yml up -d
 
 echo "=== TrailNest boot script finished: $(date) ==="
