@@ -68,20 +68,26 @@ button {
 }
 
 /*
-  Signature motif: a "trail line" — a dashed route with waypoint dots,
-  standing in for the section rules a plainer site would use a hairline for.
+  Signature motif: a "trail blaze" line — the small painted rectangles
+  hikers actually follow on tree trunks, spaced along a dashed route.
+  Standing in for the section rules a plainer site would use a hairline for.
 */
 .trail-divider {
-  --dot: 5px;
+  --mark-w: 12px;
+  --mark-gap: 22px;
   position: relative;
-  height: var(--dot);
+  height: 6px;
   margin: var(--space-6) 0;
-  background-image: radial-gradient(circle, var(--color-sage) var(--dot), transparent var(--dot)),
-    linear-gradient(to right, transparent 0, transparent 100%);
+  background-image: linear-gradient(
+    to right,
+    var(--color-terracotta) 0,
+    var(--color-terracotta) var(--mark-w),
+    transparent var(--mark-w),
+    transparent var(--mark-gap)
+  );
   background-repeat: repeat-x;
-  background-size: 28px var(--dot);
+  background-size: var(--mark-gap) 100%;
   background-position: left center;
-  opacity: 0.55;
 }
 
 .trail-divider::before {
@@ -94,6 +100,19 @@ button {
     to right,
     var(--color-border-strong) 0,
     var(--color-border-strong) 10px,
+    transparent 10px,
+    transparent 18px
+  );
+}
+
+/* On a dark surface (the footer's forest band) the hairline needs a
+   lighter tone to stay visible — the blaze marks themselves already read
+   fine on both, so only the connecting line is overridden. */
+.trail-divider--on-dark::before {
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--color-parchment-muted-on-dark) 0,
+    var(--color-parchment-muted-on-dark) 10px,
     transparent 10px,
     transparent 18px
   );

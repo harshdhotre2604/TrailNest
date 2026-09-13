@@ -1,4 +1,4 @@
-import { Fraunces, Karla } from 'next/font/google';
+import { Fraunces, Public_Sans } from 'next/font/google';
 import './globals.css';
 import SiteHeader from '@/components/layout/SiteHeader';
 import SiteFooter from '@/components/layout/SiteFooter';
@@ -11,10 +11,13 @@ const fraunces = Fraunces({
   display: 'swap',
 });
 
-const karla = Karla({
+// The U.S. federal government's own typeface — used on National Park
+// Service signage. A deliberate pairing for a "trail" brand, not a
+// default sans swapped in for its own sake.
+const publicSans = Public_Sans({
   subsets: ['latin'],
   weight: ['400', '500', '700'],
-  variable: '--font-karla',
+  variable: '--font-public-sans',
   display: 'swap',
 });
 
@@ -26,7 +29,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className={`${fraunces.variable} ${karla.variable}`}>
+    <html lang="en" className={`${fraunces.variable} ${publicSans.variable}`}>
       <body>
         <SiteHeader />
         <main>{children}</main>

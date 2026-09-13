@@ -1,6 +1,8 @@
 .footer {
   margin-top: var(--space-9);
-  padding: var(--space-6) 0 var(--space-8);
+  padding: var(--space-7) 0 var(--space-8);
+  background: var(--color-forest-dark);
+  color: var(--color-parchment-muted-on-dark);
 }
 
 .row {
@@ -9,5 +11,10 @@
   flex-wrap: wrap;
   gap: var(--space-3);
   font-size: var(--text-sm);
-  color: var(--color-ink-muted);
+}
+
+.row span:first-child {
+  color: var(--color-parchment-on-dark);
+  font-family: var(--font-display);
+  font-style: italic;
 }

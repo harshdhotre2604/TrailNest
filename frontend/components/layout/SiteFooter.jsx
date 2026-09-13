@@ -4,7 +4,7 @@ export default function SiteFooter() {
   return (
     <footer className={styles.footer}>
       <div className="container">
-        <div className="trail-divider" role="presentation" />
+        <div className="trail-divider trail-divider--on-dark" role="presentation" />
         <div className={styles.row}>
           <span>TrailNest — a small, fictional collection of stays.</span>
           <span>Built as a DevOps reference project.</span>

@@ -1,34 +1,42 @@
 /*
-  TrailNest design tokens.
-  Palette: nature pastel — cream canvas, sand surfaces, sage + terracotta accents.
-  Every color, spacing, and type value used in the app should trace back here.
+  TrailNest design tokens — "Trailhead Signage".
+  Palette: topo-map parchment canvas, a bold painted trail-blaze orange,
+  and a deep forest green — the vernacular of an actual trailhead sign,
+  not a cozy pastel farmhouse. Every color, spacing, and type value used
+  in the app should trace back here.
 */
 
 :root {
   /* ---- Color: surfaces ---- */
-  --color-bg: #f3eee2;          /* page canvas — soft cream */
-  --color-surface: #fbf8f2;     /* cards, panels — warm off-white, sits just above bg */
-  --color-surface-sunk: #ece3d2;/* recessed surfaces — inputs, tags */
-  --color-sand: #e4d9c4;        /* sand-toned fills — badges, hover states */
-  --color-border: #ddd2be;      /* low-contrast hairline borders */
-  --color-border-strong: #c9b99c;
+  --color-bg: #ede0c0;           /* page canvas — warm parchment/khaki, not cream */
+  --color-surface: #f7f0dc;      /* cards, panels — lighter than bg */
+  --color-surface-sunk: #e2d3a8; /* recessed surfaces — inputs, tags */
+  --color-sand: #ddc998;         /* fills, hover states, image placeholders */
+  --color-border: #cbb37e;       /* hairline borders */
+  --color-border-strong: #a98a4f;
 
   /* ---- Color: accents ---- */
-  --color-sage: #7c8f6e;         /* decorative sage — icons, large text, fills */
-  --color-sage-deep: #47543d;    /* text-safe sage — labels, links (AA on cream) */
-  --color-terracotta: #bc6b45;   /* primary CTA fill */
-  --color-terracotta-deep: #8a4c2e; /* text-safe terracotta, hover/active */
+  --color-sage: #3f6b47;          /* deep forest — decorative fills, secondary icons */
+  --color-sage-deep: #24401f;     /* text-safe forest — labels, links (AA on parchment) */
+  --color-terracotta: #c8481f;    /* trail-blaze orange — primary CTA fill */
+  --color-terracotta-deep: #8f2f10; /* text-safe blaze, hover/active */
 
-  /* ---- Color: text ---- */
-  --color-ink: #322e27;          /* primary text, warm near-black */
-  --color-ink-muted: #6b6459;    /* secondary text */
-  --color-ink-faint: #948b7c;    /* placeholders, disabled */
-  --color-on-accent: #fbf8f2;    /* text on filled terracotta/sage buttons */
+  /* ---- Color: text (on the light canvas above) ---- */
+  --color-ink: #241f16;           /* primary text, deep warm near-black */
+  --color-ink-muted: #5c5340;     /* secondary text */
+  --color-ink-faint: #8c8168;     /* placeholders, disabled */
+  --color-on-accent: #f7f0dc;     /* text on filled blaze/forest buttons */
+
+  /* ---- Color: the dark forest bookend (footer + any deliberately dark block) ---- */
+  --color-forest-dark: #16241a;
+  --color-forest-dark-surface: #1f3324;
+  --color-parchment-on-dark: #f0e6c8;
+  --color-parchment-muted-on-dark: #a8b89c;
 
   /* ---- Color: status (leads) ---- */
-  --color-status-new: #8a4c2e;
-  --color-status-contacted: #7c8f6e;
-  --color-status-closed: #948b7c;
+  --color-status-new: #8f2f10;
+  --color-status-contacted: #3f6b47;
+  --color-status-closed: #8c8168;
 
   /* ---- Spacing scale (4px base) ---- */
   --space-1: 0.25rem;  /* 4px */
@@ -46,9 +54,13 @@
   --radius-md: 10px;
   --radius-lg: 16px;
 
-  /* ---- Typography ---- */
+  /* ---- Typography ----
+     Fraunces stays: already distinctive, no reason to replace it.
+     Karla -> Public Sans for body: a federal/civic signage face — the
+     same register as actual trailhead and National Park Service signs,
+     not a coincidence for a "trail" brand. */
   --font-display: var(--font-fraunces), Georgia, serif;
-  --font-body: var(--font-karla), -apple-system, sans-serif;
+  --font-body: var(--font-public-sans), -apple-system, sans-serif;
 
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
