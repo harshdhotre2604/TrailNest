@@ -10,7 +10,15 @@ echo "=== TrailNest boot script starting: $(date) ==="
 curl -fsSL https://get.docker.com | sh
 usermod -aG docker ubuntu
 apt-get update -y
-apt-get install -y mysql-client
+apt-get install -y mysql-client unzip
+
+# The plain Ubuntu AMI has no AWS CLI at all — confirmed the hard way (every
+# instance failed identically at the first `aws` call below until this was
+# added). Not an apt package; install the official v2 bundle.
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
+unzip -q /tmp/awscliv2.zip -d /tmp
+/tmp/aws/install
+rm -rf /tmp/awscliv2.zip /tmp/aws
 
 # --- fetch secrets: this instance's IAM role permits reading only these
 # three parameters (see terraform/iam.tf) ---
