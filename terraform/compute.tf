@@ -70,7 +70,7 @@ resource "aws_autoscaling_group" "trailnest" {
     strategy = "Rolling"
     preferences {
       min_healthy_percentage = 50
-      instance_warmup        = 180
+      instance_warmup        = 420 # match health_check_grace_period above
     }
   }
 
