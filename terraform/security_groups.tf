@@ -4,7 +4,7 @@
 
 resource "aws_security_group" "alb" {
   name        = "trailnest-alb-sg"
-  description = "Public internet -> ALB, port 80 only"
+  description = "Public internet to ALB, port 80 only"
   vpc_id      = aws_vpc.trailnest.id
 
   ingress {
@@ -25,7 +25,7 @@ resource "aws_security_group" "alb" {
 
 resource "aws_security_group" "app" {
   name        = "trailnest-app-sg"
-  description = "ALB -> app instances only. No SSH — see SSM Session Manager instead."
+  description = "ALB to app instances only. No SSH, use SSM Session Manager instead."
   vpc_id      = aws_vpc.trailnest.id
 
   ingress {
@@ -53,7 +53,7 @@ resource "aws_security_group" "app" {
 
 resource "aws_security_group" "rds" {
   name        = "trailnest-rds-sg"
-  description = "App instances -> RDS only, port 3306"
+  description = "App instances to RDS only, port 3306"
   vpc_id      = aws_vpc.trailnest.id
 
   ingress {
