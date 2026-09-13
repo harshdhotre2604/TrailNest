@@ -47,13 +47,27 @@ DB_ROOT_PASSWORD=unused-service-never-starts
 DOCKERHUB_USERNAME=${dockerhub_username}
 EOF
 
-# --- load schema/seed against RDS. Idempotent (CREATE TABLE IF NOT EXISTS /
-# INSERT IGNORE) so re-running this on every boot, from every instance, is
-# safe — RDS has no equivalent of Docker's docker-entrypoint-initdb.d. ---
+# --- load schema/seed against RDS, but ONLY on a genuinely fresh database.
+# schema.sql (CREATE TABLE IF NOT EXISTS) and seed_amenities.sql (INSERT
+# IGNORE against a real unique key) are safe to re-run. db/seed.sql is NOT:
+# its owners/properties/leads inserts are plain INSERT INTO with no unique
+# key on properties/leads at all, so a second run doesn't just no-op --
+# it errors on owners.email's unique constraint (confirmed: this is exactly
+# what killed every instance after the first one to seed successfully) and,
+# for properties/leads, would have silently duplicated rows instead. RDS has
+# no equivalent of Docker's docker-entrypoint-initdb.d "only on an empty
+# volume" behavior, so that check is done by hand here instead.
 export MYSQL_PWD="$DB_PASSWORD"
-mysql -h ${rds_endpoint} -u ${db_username} ${db_name} < db/schema.sql
-mysql -h ${rds_endpoint} -u ${db_username} ${db_name} < db/seed.sql
-mysql -h ${rds_endpoint} -u ${db_username} ${db_name} < db/seed_amenities.sql
+TABLE_EXISTS=$(mysql -h ${rds_endpoint} -u ${db_username} -N -e \
+  "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '${db_name}' AND table_name = 'owners';")
+if [ "$TABLE_EXISTS" = "0" ]; then
+  echo "Fresh database detected -- loading schema and seed data"
+  mysql -h ${rds_endpoint} -u ${db_username} ${db_name} < db/schema.sql
+  mysql -h ${rds_endpoint} -u ${db_username} ${db_name} < db/seed.sql
+  mysql -h ${rds_endpoint} -u ${db_username} ${db_name} < db/seed_amenities.sql
+else
+  echo "Database already initialized -- skipping schema/seed load"
+fi
 unset MYSQL_PWD
 
 # Pull the pre-built images GitHub Actions already pushed — nothing gets
