@@ -62,7 +62,9 @@ resource "aws_autoscaling_group" "trailnest" {
   ]
 
   health_check_type         = "ELB"
-  health_check_grace_period = 180 # boot script needs time: docker install + build + RDS load
+  health_check_grace_period = 420 # observed: docker install + AWS CLI install + 2 image pulls
+  # + RDS schema/seed load routinely takes 4-6 min on a t3.small; 180s was
+  # cutting instances off mid-boot and triggering unnecessary replacement.
 
   instance_refresh {
     strategy = "Rolling"
