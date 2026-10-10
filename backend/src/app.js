@@ -1,6 +1,7 @@
 const path = require('path');
 const express = require('express');
 const cors = require('cors');
+const client = require('prom-client');
 
 const healthRoutes = require('./routes/health.routes');
 const authRoutes = require('./routes/auth.routes');
@@ -22,6 +23,37 @@ if (process.env.TRUST_PROXY) {
 
 app.use(cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:3000' }));
 app.use(express.json());
+
+// Prometheus metrics. Node process defaults (heap, event-loop lag, GC) plus one
+// histogram that gives request rate, error rate and latency per route.
+client.collectDefaultMetrics();
+
+const httpDuration = new client.Histogram({
+  name: 'http_request_duration_seconds',
+  help: 'API request duration in seconds',
+  labelNames: ['method', 'route', 'status'],
+  buckets: [0.05, 0.1, 0.25, 0.5, 1, 2, 5],
+});
+
+app.use((req, res, next) => {
+  const end = httpDuration.startTimer();
+  res.on('finish', () => {
+    // Route pattern (/api/properties/:id), never the raw URL — raw URLs would
+    // create a new time series per id and per bot-probed path.
+    const route = req.route ? req.baseUrl + req.route.path : 'unmatched';
+    end({ method: req.method, route, status: res.statusCode });
+  });
+  next();
+});
+
+// Deliberately not under /api: the ALB only forwards /api/* and /uploads/* to
+// the backend, so this isn't reachable from the internet. Prometheus scrapes
+// :4000 directly from inside the VPC.
+app.get('/metrics', async (req, res) => {
+  res.set('Content-Type', client.register.contentType);
+  res.end(await client.register.metrics());
+});
+
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 app.use('/api/health', healthRoutes);
