@@ -1,0 +1,4 @@
+# Boot scripts run under bash on Ubuntu: a CRLF checkout on Windows (where
+# terraform apply may run) would break them at the first line.
+*.tftpl text eol=lf
+*.sh    text eol=lf
