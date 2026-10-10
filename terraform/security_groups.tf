@@ -42,6 +42,31 @@ resource "aws_security_group" "app" {
     protocol        = "tcp"
     security_groups = [aws_security_group.alb.id]
   }
+
+  # Prometheus scrapes, from the monitoring box only. Kept inline (not
+  # aws_security_group_rule resources): mixing the two styles on one group
+  # makes Terraform add/remove rules on every apply.
+  ingress {
+    description     = "Backend metrics, from the monitoring box only"
+    from_port       = 4000
+    to_port         = 4000
+    protocol        = "tcp"
+    security_groups = [aws_security_group.monitoring.id]
+  }
+  ingress {
+    description     = "node_exporter, from the monitoring box only"
+    from_port       = 9100
+    to_port         = 9100
+    protocol        = "tcp"
+    security_groups = [aws_security_group.monitoring.id]
+  }
+  ingress {
+    description     = "cAdvisor, from the monitoring box only"
+    from_port       = 8080
+    to_port         = 8080
+    protocol        = "tcp"
+    security_groups = [aws_security_group.monitoring.id]
+  }
   egress {
     from_port   = 0
     to_port     = 0
@@ -70,4 +95,20 @@ resource "aws_security_group" "rds" {
     cidr_blocks = ["0.0.0.0/0"]
   }
   tags = { Name = "trailnest-rds-sg" }
+}
+
+resource "aws_security_group" "monitoring" {
+  name        = "trailnest-monitoring-sg"
+  description = "Monitoring box. No inbound at all, Grafana is reached via SSM port forwarding"
+  vpc_id      = aws_vpc.trailnest.id
+
+  # Outbound only: scrape app instances, probe the ALB, call the EC2/CloudWatch
+  # APIs, post to Slack (the last three via the NAT Gateway).
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  tags = { Name = "trailnest-monitoring-sg" }
 }

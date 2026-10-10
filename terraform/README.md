@@ -40,10 +40,28 @@ Docker Hub before any instance boots, or its first `pull` fails. Either
 push to `main` once (so the workflow builds+pushes) before running
 `terraform apply` for the first time, or `docker build`/`push` by hand once.
 
+**Monitoring tier (`monitoring.tf`).** One private `t3.small`,
+`trailnest-monitoring`, with **no inbound ports**. It runs
+`monitoring/docker-compose.yml` (Prometheus, Alertmanager, Grafana, Blackbox,
+YACE) and alerts to Slack. Prometheus finds app instances through the EC2 API
+(tag `Name=trailnest-app`), so ASG replacements are picked up automatically;
+the app security group lets the monitoring box (only) reach :4000/:9100/:8080.
+Every app instance also starts `docker-compose.exporters.yml` (node_exporter +
+cAdvisor). Reach Grafana with an SSM tunnel:
+
+```powershell
+aws ssm start-session --target (terraform output -raw monitoring_instance_id) `
+  --document-name AWS-StartPortForwardingSession --parameters "portNumber=3001,localPortNumber=3001"
+# then http://localhost:3001 — user admin, password: terraform output -raw grafana_admin_password
+```
+
+Boot log: `/var/log/monitoring-boot.log` on the box. Adds roughly $0.03/hour.
+
 ## One-time setup
 
-Nothing — every variable has a default. Optionally set `gemini_api_key` in
-`terraform.tfvars` if you want the AI features working on this architecture.
+Copy `terraform.tfvars.example` to `terraform.tfvars` and set
+`slack_webhook_url` (required — Alertmanager's Slack destination). Optionally
+set `gemini_api_key` if you want the AI features working on this architecture.
 
 ## Workflow
 
@@ -72,15 +90,17 @@ terraform destroy   # type "yes" — tears down all 15 resources
 | `versions.tf` | provider + required versions |
 | `data.tf` | AMI lookup, AZ lookup, caller identity |
 | `vpc.tf` | VPC, subnets, IGW, NAT, route tables |
-| `security_groups.tf` | ALB / app / RDS security groups |
+| `security_groups.tf` | ALB / app / RDS / monitoring security groups |
 | `secrets.tf` | generated passwords + SSM SecureString parameters |
 | `iam.tf` | the app instances' narrowly-scoped IAM role |
 | `rds.tf` | DB subnet group + Multi-AZ RDS instance |
 | `alb.tf` | target groups, ALB, listener, path-based routing rule |
 | `compute.tf` | Launch Template (+ boot script) and Auto Scaling Group |
-| `logs.tf` | CloudWatch log group |
+| `logs.tf` | CloudWatch log group (app containers ship to it via the awslogs driver in `docker-compose.images.yml`) |
+| `monitoring.tf` | monitoring box: IAM role, instance |
 | `templates/user_data.sh.tftpl` | the boot script every app instance runs |
-| `variables.tf` / `outputs.tf` | inputs (all have defaults) / outputs |
+| `templates/monitoring_user_data.sh.tftpl` | the monitoring box's boot script |
+| `variables.tf` / `outputs.tf` | inputs (all but `slack_webhook_url` have defaults) / outputs |
 
 `terraform.tfstate`, `.terraform/`, and `terraform.tfvars` are gitignored.
 `.terraform.lock.hcl` **is** committed, pinning the exact provider versions.

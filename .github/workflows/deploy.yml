@@ -3,21 +3,52 @@ name: Build, Push, and Deploy
 on:
   push:
     branches: [main]
+  # PRs run only the `checks` job — a bad alert rule or a failing test shows up
+  # on the PR, before anything can reach the instances.
+  pull_request:
+    branches: [main]
 
 jobs:
-  build-and-push:
+  checks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      # Swap in real tests once TrailNest has any (npm test --if-present is
-      # a no-op today, but keeps the job from silently skipping this step
-      # once tests exist).
       - name: Install and test backend
         run: |
           cd backend
           npm ci
-          npm test --if-present
+          npm test
+
+      # Same validators Prometheus/Alertmanager run at startup — a typo here
+      # would otherwise only surface as a crash-looping container on the box.
+      - name: Validate Prometheus config and alert rules
+        run: |
+          for cfg in prometheus.yml prometheus.local.yml; do
+            docker run --rm -v "$PWD/monitoring:/m" --entrypoint promtool prom/prometheus:v2.53.2 \
+              check config "/m/prometheus/$cfg"
+          done
+
+      - name: Validate Alertmanager config
+        run: |
+          docker run --rm -v "$PWD/monitoring:/m" --entrypoint amtool prom/alertmanager:v0.27.0 \
+            check-config /m/alertmanager/alertmanager.yml
+
+      # Trivy from its official image rather than a third-party action — one
+      # less piece of someone else's code running with this repo's secrets.
+      # Report-only for now: flip --exit-code to 1 once the backlog is clean.
+      - name: Scan dependencies and Dockerfiles for known CVEs
+        run: |
+          docker run --rm -v "$PWD:/src" aquasec/trivy:0.56.2 fs \
+            --scanners vuln,misconfig --severity CRITICAL,HIGH --ignore-unfixed \
+            --exit-code 0 /src
+
+  build-and-push:
+    needs: checks
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
@@ -47,6 +78,7 @@ jobs:
 
   deploy:
     needs: build-and-push
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS credentials
@@ -85,3 +117,46 @@ jobs:
             esac
             sleep 20
           done
+
+  # The GitOps step for monitoring: the box converges to what's on main.
+  # Config folders are directory-mounted, so git pull + /-/reload is enough —
+  # no container restart, no lost metrics history.
+  reload-monitoring:
+    needs: checks
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Pull and reload monitoring config
+        run: |
+          aws ssm send-command \
+            --targets "Key=tag:Name,Values=trailnest-monitoring" \
+            --document-name AWS-RunShellScript \
+            --comment "reload ${GITHUB_SHA::7}" \
+            --parameters 'commands=["cd /opt/trailnest && git pull --ff-only","cd /opt/trailnest/monitoring && docker compose --profile aws up -d","curl -fsS -X POST http://localhost:9090/-/reload","curl -fsS -X POST http://localhost:9093/-/reload"]'
+
+  # Runs even when something above failed — that's when the message matters
+  # most. Values reach the script only through env:, never inline ${{ }}, so
+  # nothing user-controlled (like a commit message) can inject shell commands.
+  notify:
+    needs: [build-and-push, deploy, reload-monitoring]
+    if: always() && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post pipeline result to Slack
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          BUILD: ${{ needs.build-and-push.result }}
+          DEPLOY: ${{ needs.deploy.result }}
+          MONITORING: ${{ needs.reload-monitoring.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          TEXT="TrailNest pipeline \`${GITHUB_SHA::7}\` by $GITHUB_ACTOR: build *$BUILD*, deploy *$DEPLOY*, monitoring *$MONITORING*"
+          jq -n --arg text "$TEXT"$'\n'"$RUN_URL" '{text: $text}' \
+            | curl -fsS -X POST -H 'Content-Type: application/json' --data @- "$SLACK_WEBHOOK_URL"

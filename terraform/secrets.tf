@@ -33,3 +33,25 @@ resource "aws_ssm_parameter" "gemini_api_key" {
   value = var.gemini_api_key != "" ? var.gemini_api_key : "unset"
   tags  = { Project = "trailnest" }
 }
+
+# Monitoring secrets: the Slack webhook is a real external credential (comes in
+# as a variable, like the Gemini key); the Grafana admin password is generated.
+
+resource "aws_ssm_parameter" "slack_webhook" {
+  name  = "/trailnest/slack_webhook"
+  type  = "SecureString"
+  value = var.slack_webhook_url
+  tags  = { Project = "trailnest" }
+}
+
+resource "random_password" "grafana_admin" {
+  length  = 24
+  special = false
+}
+
+resource "aws_ssm_parameter" "grafana_admin_password" {
+  name  = "/trailnest/grafana_admin_password"
+  type  = "SecureString"
+  value = random_password.grafana_admin.result
+  tags  = { Project = "trailnest" }
+}

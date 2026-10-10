@@ -1,0 +1,40 @@
+#!/bin/bash
+# Runs once on the monitoring box. Same shape as user_data.sh.tftpl: install
+# Docker + AWS CLI, fetch secrets from SSM, clone the repo, compose up.
+set -euo pipefail
+exec > >(tee /var/log/monitoring-boot.log) 2>&1
+
+echo "=== TrailNest monitoring boot starting: $(date) ==="
+
+curl -fsSL https://get.docker.com | sh
+apt-get update -y
+apt-get install -y unzip
+
+# Plain Ubuntu AMI has no AWS CLI (bug #2 from the app boot script).
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
+unzip -q /tmp/awscliv2.zip -d /tmp
+/tmp/aws/install
+rm -rf /tmp/awscliv2.zip /tmp/aws
+
+git clone https://github.com/harshdhotre2604/TrailNest.git /opt/trailnest
+cd /opt/trailnest/monitoring
+mkdir -p prometheus/targets alertmanager/secrets
+
+# --- secrets: this instance's role can read exactly these two parameters ---
+aws ssm get-parameter --region ${aws_region} --name /trailnest/slack_webhook \
+  --with-decryption --query Parameter.Value --output text > alertmanager/secrets/slack_webhook
+chmod 644 alertmanager/secrets/slack_webhook # Alertmanager runs as "nobody" in its container
+
+GRAFANA_PW=$(aws ssm get-parameter --region ${aws_region} --name /trailnest/grafana_admin_password \
+  --with-decryption --query Parameter.Value --output text)
+echo "GRAFANA_ADMIN_PASSWORD=$GRAFANA_PW" > .env
+
+# The ALB's DNS name changes on every apply, so it can't live in Git.
+# Prometheus reads this through file_sd_configs (and re-reads it if it changes).
+cat > prometheus/targets/blackbox.json <<EOF
+[{"targets": ["http://${alb_dns_name}/", "http://${alb_dns_name}/api/health"]}]
+EOF
+
+docker compose --profile aws up -d
+
+echo "=== TrailNest monitoring boot finished: $(date) ==="

@@ -8,12 +8,26 @@
 # the exact disk-and-CPU risk the original Phase 3 disk-space incident
 # demonstrated; GitHub's runner does that work instead, once, and these
 # instances only ever pull the finished result.
+#
+# Container logs go to the /trailnest/containers CloudWatch log group
+# (terraform/logs.tf; the app role already allows PutLogEvents). Docker's
+# awslogs driver runs in dockerd on the host, so the instance role's
+# credentials work without any metadata hop-limit change.
+
+x-awslogs: &awslogs
+  driver: awslogs
+  options:
+    awslogs-region: ap-south-1
+    awslogs-group: /trailnest/containers
+    tag: "{{.Name}}-{{.ID}}"
 
 services:
   backend:
     build: !reset null
     image: ${DOCKERHUB_USERNAME}/trailnest-backend:latest
+    logging: *awslogs
 
   frontend:
     build: !reset null
     image: ${DOCKERHUB_USERNAME}/trailnest-frontend:latest
+    logging: *awslogs

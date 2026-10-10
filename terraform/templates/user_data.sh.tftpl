@@ -75,7 +75,11 @@ unset MYSQL_PWD
 # public. If they were ever made private, this instance's role would also
 # need a Docker Hub credential fetched from SSM the same way the three
 # secrets above are.)
-docker compose -f docker-compose.yml -f docker-compose.rds.yml -f docker-compose.images.yml pull
-docker compose -f docker-compose.yml -f docker-compose.rds.yml -f docker-compose.images.yml up -d
+#
+# docker-compose.exporters.yml adds node_exporter + cAdvisor for the
+# monitoring box to scrape (Prometheus finds this instance via EC2 tags).
+COMPOSE="docker compose -f docker-compose.yml -f docker-compose.rds.yml -f docker-compose.images.yml -f docker-compose.exporters.yml"
+$COMPOSE pull
+$COMPOSE up -d
 
 echo "=== TrailNest boot script finished: $(date) ==="

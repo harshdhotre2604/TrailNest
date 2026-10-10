@@ -22,3 +22,14 @@ output "db_password" {
   value       = random_password.db_password.result
   sensitive   = true
 }
+
+output "monitoring_instance_id" {
+  description = "Target for the SSM port-forward tunnels to Grafana (3001) / Prometheus (9090) / Alertmanager (9093)"
+  value       = aws_instance.monitoring.id
+}
+
+output "grafana_admin_password" {
+  description = "Grafana login for user admin — also stored in SSM at /trailnest/grafana_admin_password"
+  value       = random_password.grafana_admin.result
+  sensitive   = true
+}

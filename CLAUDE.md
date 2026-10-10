@@ -62,12 +62,9 @@ carry over.
    trailnest-asg ...` — changing an SSM parameter's value does **not** by itself change
    the launch template's rendered content, so already-running instances won't pick up
    the new key without a fresh boot.
-2. **CloudWatch log group exists but nothing ships logs to it.** `terraform/logs.tf`
-   creates `/trailnest/containers` and the app IAM role can write to it, but no Docker
-   `awslogs` logging driver (or CloudWatch agent) was ever wired into
-   `docker-compose.rds.yml`/`docker-compose.images.yml`. The log group is empty. Real
-   logs today: SSM into an instance, then `docker compose -f docker-compose.yml -f
-   docker-compose.rds.yml -f docker-compose.images.yml logs`.
+2. ~~CloudWatch log group exists but nothing ships logs to it.~~ Fixed on branch
+   `feature/observability`: `docker-compose.images.yml` sets the `awslogs` driver
+   (group `/trailnest/containers`) for backend + frontend.
 3. **`backend_uploads` (property photos) is a per-instance Docker volume** — with 2 ASG
    instances, uploaded photos aren't shared between them. Would need S3 + a small code
    change to fix properly; not done.
@@ -95,8 +92,31 @@ reasons — not guessed. Full write-up in `TrailNest_Infrastructure_Report.docx`
    empty volume" behavior Docker's `docker-entrypoint-initdb.d` gave for free locally,
    which RDS has no equivalent of.
 
+## Observability (branch `feature/observability`, built 2026-10-10, not yet applied to AWS)
+
+- Backend exposes Prometheus metrics at `:4000/metrics` (prom-client; histogram
+  `http_request_duration_seconds{method,route,status}`). Not under `/api`, so the
+  ALB never routes it publicly. `backend/test/metrics.test.js` guards it (`npm test`).
+- `monitoring/` = Prometheus + Alertmanager (→ Slack) + Grafana + Blackbox + YACE.
+  Same compose file locally (`monitoring/.env` → `PROM_CONFIG=prometheus.local.yml`)
+  and on the AWS monitoring box (`--profile aws`). Config is mounted as
+  **directories** on purpose (git pull replaces file inodes). 12 alert rules in
+  `monitoring/prometheus/alerts.yml`; boot-window-aware `for:` durations.
+- Terraform: `monitoring.tf` (private t3.small, no inbound, IMDS hop limit 2 so
+  containers get role creds), SSM params `/trailnest/slack_webhook` +
+  `/trailnest/grafana_admin_password`, app SG allows 4000/9100/8080 from the
+  monitoring SG only. `slack_webhook_url` is a **required** tfvars value.
+- YACE metric names in the `aws-managed` rule group are unverified until the first
+  AWS run — check `{__name__=~"aws_.*"}` and fix if they differ.
+
 ## CI/CD pipeline (`.github/workflows/deploy.yml`)
 
+- **`checks`** (also runs on PRs): backend `npm test`, promtool/amtool config
+  validation, Trivy fs scan (report-only). Everything else needs it and is push-only.
+- **`reload-monitoring`**: `aws ssm send-command` to `tag:Name=trailnest-monitoring`
+  → `git pull` + Prometheus/Alertmanager `/-/reload`.
+- **`notify`**: posts build/deploy/monitoring results to Slack (`if: always()`);
+  needs GitHub secret `SLACK_WEBHOOK_URL`.
 - **`build-and-push`**: builds both Docker images, tags `:latest` + commit SHA, pushes
   to Docker Hub (account: `dhotreharsh` — must match `terraform/variables.tf`'s
   `dockerhub_username` default exactly, or instances 404 pulling).
