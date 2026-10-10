@@ -1,0 +1,25 @@
+route:
+  receiver: slack
+  group_by: [alertname, instance_id]
+  group_wait: 30s      # collect related alerts before the first message
+  group_interval: 5m   # wait before announcing new alerts in an existing group
+  repeat_interval: 4h  # re-post if still firing
+
+inhibit_rules:
+  # If the whole site is down, don't also post every warning underneath it.
+  - source_matchers: [alertname="SiteDown"]
+    target_matchers: [severity="warning"]
+
+receivers:
+  - name: slack
+    slack_configs:
+      # Gitignored file: written by hand locally, from SSM by user data on AWS.
+      - api_url_file: /etc/alertmanager/secrets/slack_webhook
+        send_resolved: true
+        color: '{{ if eq .Status "firing" }}danger{{ else }}good{{ end }}'
+        title: '[{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}'
+        text: |-
+          {{ range .Alerts }}*{{ .Annotations.summary }}*
+          {{ .Annotations.description }}
+          severity: `{{ .Labels.severity }}`
+          {{ end }}

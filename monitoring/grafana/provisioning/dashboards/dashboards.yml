@@ -1,0 +1,7 @@
+apiVersion: 1
+providers:
+  - name: trailnest
+    folder: TrailNest
+    type: file
+    options:
+      path: /etc/grafana/dashboards # = monitoring/grafana/dashboards in the repo

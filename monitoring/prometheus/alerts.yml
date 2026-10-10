@@ -1,0 +1,118 @@
+# Shared by the laptop and AWS configs. Rules with no matching data (host and
+# AWS rules on the laptop) simply never fire.
+groups:
+  - name: availability
+    rules:
+      - alert: SiteDown
+        expr: probe_success == 0
+        for: 2m
+        labels: { severity: critical }
+        annotations:
+          summary: "TrailNest unreachable: {{ $labels.instance }}"
+          description: "Outside probe has failed for 2 minutes. Real users are affected."
+
+      # 8m > the slowest real ASG boot (~6-7 min, see health_check_grace_period),
+      # so a fresh instance discovered at "running" never pages anyone.
+      - alert: ExporterDown
+        expr: up{job=~"node|cadvisor"} == 0
+        for: 8m
+        labels: { severity: warning }
+        annotations:
+          summary: "{{ $labels.job }} not answering on {{ $labels.instance_id }}"
+          description: "No successful scrape for 8 minutes."
+
+      # Fast (1m) on established instances, silent on booting ones: only counts
+      # instances whose node_exporter says they've been up more than 8 minutes.
+      - alert: BackendDown
+        expr: |
+          up{job="backend"} == 0
+            and on (instance_id)
+          (time() - node_boot_time_seconds) > 480
+        for: 1m
+        labels: { severity: critical }
+        annotations:
+          summary: "Backend container down on {{ $labels.instance_id }}"
+          description: "Instance has been up over 8 minutes but the API is not answering."
+
+  - name: backend
+    rules:
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(http_request_duration_seconds_count{status=~"5.."}[5m]))
+            / sum(rate(http_request_duration_seconds_count[5m])) > 0.05
+        for: 5m
+        labels: { severity: critical }
+        annotations:
+          summary: "API error rate {{ $value | humanizePercentage }}"
+          description: "More than 5% of API requests returned 5xx for 5 minutes."
+
+      - alert: SlowApi
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le) (rate(http_request_duration_seconds_bucket{route!="unmatched"}[5m]))) > 1
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "API p95 latency {{ $value | humanizeDuration }}"
+          description: "The slowest 5% of API requests have taken over 1s for 10 minutes."
+
+  - name: hosts
+    rules:
+      - alert: HostHighCpu
+        expr: 100 * (1 - avg by (instance_id) (rate(node_cpu_seconds_total{mode="idle"}[5m]))) > 85
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "CPU {{ $value | humanize }}% on {{ $labels.instance_id }}"
+          description: "Sustained 10 minutes. A t3.small also burns CPU credits at this level."
+
+      - alert: HostLowDisk
+        expr: node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"} < 0.15
+        for: 5m
+        labels: { severity: critical }
+        annotations:
+          summary: "Root disk {{ $value | humanizePercentage }} free on {{ $labels.instance_id }}"
+          description: "Image pulls fail on a full disk (the Phase 3 disk incident, caught early)."
+
+      - alert: HostHighMemory
+        expr: 1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes > 0.9
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "Memory {{ $value | humanizePercentage }} used on {{ $labels.instance_id }}"
+          description: "t3.small has 2 GB. Next.js + Express + exporters must fit."
+
+      - alert: ContainerRestarting
+        expr: changes(container_start_time_seconds{name!=""}[15m]) > 2
+        labels: { severity: warning }
+        annotations:
+          summary: "{{ $labels.name }} restarted {{ $value }} times in 15 min"
+          description: "Crash loop. Check the container logs on {{ $labels.instance_id }}."
+
+  # Metric names follow YACE's aws_<namespace>_<metric>_<statistic> pattern.
+  # Confirm against {__name__=~"aws_.*"} on the first AWS run and fix if they differ.
+  - name: aws-managed
+    rules:
+      - alert: RdsHighCpu
+        expr: aws_rds_cpuutilization_average > 80
+        for: 15m
+        labels: { severity: warning }
+        annotations:
+          summary: "RDS CPU {{ $value | humanize }}%"
+          description: "db.t3.micro is burstable. Sustained load drains its credits."
+
+      - alert: RdsLowStorage
+        expr: aws_rds_free_storage_space_average < 2 * 1024 * 1024 * 1024
+        for: 10m
+        labels: { severity: critical }
+        annotations:
+          summary: "RDS free storage {{ $value | humanize1024 }}B"
+          description: "Under 2 GB of the 20 GB allocation left."
+
+      - alert: AlbServer5xx
+        expr: aws_applicationelb_httpcode_elb_5xx_count_sum > 10
+        for: 5m
+        labels: { severity: critical }
+        annotations:
+          summary: "ALB itself returned {{ $value }} 5xx in the last period"
+          description: "Usually means no healthy targets behind a listener rule."

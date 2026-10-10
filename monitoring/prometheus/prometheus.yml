@@ -1,0 +1,50 @@
+# AWS version: no IPs anywhere. App instances are discovered through the EC2 API
+# (the monitoring box's IAM role allows ec2:DescribeInstances); the ALB's DNS
+# name changes every apply, so user data writes it into targets/blackbox.json.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files: [alerts.yml]
+
+alerting:
+  alertmanagers:
+    - static_configs: [{ targets: ["alertmanager:9093"] }]
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs: [{ targets: ["localhost:9090"] }]
+
+  # Every 60s: "which running instances are tagged Name=trailnest-app?" An ASG
+  # replacement shows up here on its own and the terminated one drops out.
+  - job_name: node
+    ec2_sd_configs:
+      - region: ap-south-1
+        port: 9100
+        filters: &app
+          - { name: "tag:Name", values: ["trailnest-app"] }
+          - { name: instance-state-name, values: ["running"] }
+    relabel_configs: &labels
+      - { source_labels: [__meta_ec2_instance_id], target_label: instance_id }
+      - { source_labels: [__meta_ec2_availability_zone], target_label: az }
+
+  - job_name: cadvisor
+    ec2_sd_configs: [{ region: ap-south-1, port: 8080, filters: *app }]
+    relabel_configs: *labels
+
+  - job_name: backend
+    ec2_sd_configs: [{ region: ap-south-1, port: 4000, filters: *app }]
+    relabel_configs: *labels
+
+  - job_name: blackbox
+    metrics_path: /probe
+    params: { module: [http_2xx] }
+    file_sd_configs: [{ files: [/etc/prometheus/targets/blackbox.json] }]
+    relabel_configs:
+      - { source_labels: [__address__], target_label: __param_target }
+      - { source_labels: [__param_target], target_label: instance }
+      - { target_label: __address__, replacement: "blackbox:9115" }
+
+  - job_name: yace
+    scrape_interval: 60s
+    static_configs: [{ targets: ["yace:5000"] }]
