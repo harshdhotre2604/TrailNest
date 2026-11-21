@@ -17,7 +17,7 @@ Three-Tier DevSecOps" course project, kept on our own (non-Kubernetes) architect
 |---|---|---|
 | 0 | Slack app + webhook, `#trailnest-alerts`, test message | ✅ Done |
 | 1 | Backend `/metrics` (prom-client) + `npm test` | ✅ Done, verified in Docker |
-| 2 | `monitoring/` stack running locally | ✅ Built & running — ⏳ **Slack drill + dashboards still to do** |
+| 2 | `monitoring/` stack running locally | ✅ Slack drill done 2026-11-19 · dashboards built (⚠️ **not committed yet**, see Step 2) |
 | 3 | node_exporter + cAdvisor on app instances | ✅ Code done (AWS-only, tested in Phase 5) |
 | 4 | Terraform monitoring tier | ✅ Code done, `terraform validate` passes |
 | 7 | GitHub Actions: checks / reload-monitoring / notify | ✅ Code done, actionlint passes |
@@ -36,7 +36,25 @@ c61f715 Add Prometheus/Alertmanager/Grafana monitoring stack
 
 ---
 
-## Step 1 — Local Slack drill ⏳ START HERE
+## ▶ RESUME HERE (2026-11-20)
+
+Steps 1 + 2 are done. Containers were stopped (`docker compose stop`), not removed.
+1. Start Docker Desktop, then `docker compose up -d` and `docker compose -f monitoring/docker-compose.yml up -d`
+2. **Commit the dashboards.** They're untracked on the working tree, and `feature/mytripstays-partner-feed`
+   (which has its own uncommitted partner-feed edits) points at the same commit as `feature/observability`:
+   ```powershell
+   git switch feature/observability
+   git add monitoring/grafana/dashboards
+   git commit -m "Add Golden Signals + community Grafana dashboards"
+   ```
+3. Continue with **Step 3** (push branch, open PR, check that `checks` goes green).
+
+## Step 1 — Local Slack drill ✅ DONE 2026-11-19
+
+Root cause of the earlier silence: the pasted webhook had a leading non-breaking space (byte `0xA0`).
+The Alertmanager log said `first path segment in URL cannot contain colon`, and the file was cleaned.
+Also, only Alertmanager had been started. Use `up -d` for the whole monitoring stack, not `restart alertmanager`.
+PipelineTest, then SiteDown FIRING → RESOLVED, all arrived in Slack.
 
 Last time no Slack message arrived for two reasons: the webhook file was **empty**
 (`$env:SLACK_WEBHOOK` only exists in the PowerShell window where you set it), and the
@@ -85,7 +103,13 @@ Grafana http://localhost:3001 (admin / admin) · App http://localhost:3000
 
 ---
 
-## Step 2 — Grafana dashboards (local) ⏳
+## Step 2 — Grafana dashboards (local) ✅ built 2026-11-19, ⚠️ commit pending
+
+Done differently from the UI steps below. Five JSON files were written straight into `monitoring/grafana/dashboards/`
+(nodejs-app 11159, blackbox 7587, node-exporter-full 1860, cadvisor 14282, golden-signals).
+`${DS_*}` placeholders were rewritten to uid `prometheus`. All 5 load into the TrailNest folder.
+1860 + cadvisor are empty locally and only fill on AWS. Screenshots: `GoldenSignalDashboard.png`, `BlackboxDashboard.png`.
+The original UI steps are kept below for reference.
 
 1. http://localhost:3001 → **Dashboards → New → Import** → enter ID → pick *Prometheus* → Import:
    - `11159` NodeJS Application Dashboard
