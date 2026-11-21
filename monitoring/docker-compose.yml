@@ -1,0 +1,66 @@
+# TrailNest monitoring stack. Same file on the laptop and on the AWS monitoring box:
+#   laptop:  monitoring/.env has PROM_CONFIG=prometheus.local.yml  ->  docker compose up -d
+#   AWS:     no PROM_CONFIG (defaults to prometheus.yml)            ->  docker compose --profile aws up -d
+#
+# Every config mount is a DIRECTORY, never a single file: the reload job runs
+# `git pull`, and git replaces changed files with new inodes — a single-file bind
+# mount would keep showing the container the old file forever.
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.53.2
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/${PROM_CONFIG:-prometheus.yml}
+      - --storage.tsdb.retention.time=7d
+      - --web.enable-lifecycle # allows POST /-/reload after a git pull
+    volumes:
+      - ./prometheus:/etc/prometheus:ro
+      - prom_data:/prometheus
+    ports: ["9090:9090"]
+    extra_hosts: ["host.docker.internal:host-gateway"]
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+    volumes:
+      - ./alertmanager:/etc/alertmanager:ro
+      - am_data:/alertmanager
+    ports: ["9093:9093"]
+
+  blackbox:
+    image: prom/blackbox-exporter:v0.25.0
+    restart: unless-stopped
+    extra_hosts: ["host.docker.internal:host-gateway"]
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/etc/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    ports: ["3001:3000"] # 3000 is TrailNest's own frontend
+
+  # Reads RDS + ALB metrics from CloudWatch. Needs AWS credentials (the
+  # monitoring box's instance role), so it only starts under --profile aws.
+  yace:
+    image: quay.io/prometheuscommunity/yet-another-cloudwatch-exporter:v0.61.2
+    profiles: [aws]
+    restart: unless-stopped
+    # Default listen address is 127.0.0.1:5000 — unreachable from Prometheus
+    # in another container, hence the explicit :5000.
+    command: ["--config.file=/config/config.yml", "--listen-address=:5000"]
+    volumes:
+      - ./yace:/config:ro
+
+volumes:
+  prom_data:
+  am_data:
+  grafana_data:

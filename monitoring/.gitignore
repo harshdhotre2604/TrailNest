@@ -1,0 +1,5 @@
+# Machine-specific or secret — written by hand locally, by user data on AWS
+.env
+prometheus/targets/*
+!prometheus/targets/.gitkeep
+alertmanager/secrets/

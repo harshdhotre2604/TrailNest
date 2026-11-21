@@ -50,3 +50,15 @@ variable "gemini_api_key" {
   default     = ""
   sensitive   = true
 }
+
+variable "slack_webhook_url" {
+  description = "Slack incoming-webhook URL for #trailnest-alerts. Set in terraform.tfvars (gitignored), never committed."
+  type        = string
+  sensitive   = true
+}
+
+variable "monitoring_instance_type" {
+  description = "Monitoring box: Prometheus + Alertmanager + Grafana + Blackbox + YACE. t3.small is enough at this scale."
+  type        = string
+  default     = "t3.small"
+}

@@ -1,5 +1,8 @@
-# Everything here has a sensible default — this file is only needed if you
-# want to override one, most likely the Gemini key.
-# Copy to terraform.tfvars (gitignored) if you use it.
+# Copy to terraform.tfvars (gitignored) and fill in.
 
+# Required: Slack incoming-webhook URL for #trailnest-alerts (api.slack.com/apps
+# -> your app -> Incoming Webhooks). Stored in SSM; the monitoring box reads it at boot.
+slack_webhook_url = "https://hooks.slack.com/services/XXX/YYY/ZZZ"
+
+# Optional: enables the AI features.
 # gemini_api_key = "your-real-key-here"

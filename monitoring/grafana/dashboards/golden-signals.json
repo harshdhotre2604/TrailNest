@@ -1,0 +1,43 @@
+{
+  "uid": "trailnest-golden",
+  "title": "TrailNest Golden Signals",
+  "tags": ["trailnest"],
+  "timezone": "browser",
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "schemaVersion": 39,
+  "panels": [
+    {
+      "id": 1, "type": "timeseries", "title": "Traffic (req/s)",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+      "targets": [{ "refId": "A", "legendFormat": "total",
+        "expr": "sum(rate(http_request_duration_seconds_count[5m]))" }]
+    },
+    {
+      "id": 2, "type": "timeseries", "title": "Errors (% 5xx)",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0 }, "overrides": [] },
+      "targets": [{ "refId": "A", "legendFormat": "5xx %",
+        "expr": "100 * sum(rate(http_request_duration_seconds_count{status=~\"5..\"}[5m])) / sum(rate(http_request_duration_seconds_count[5m])) or vector(0)" }]
+    },
+    {
+      "id": 3, "type": "timeseries", "title": "Latency (p95 per route)",
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "targets": [{ "refId": "A", "legendFormat": "{{route}}",
+        "expr": "histogram_quantile(0.95, sum by (le, route) (rate(http_request_duration_seconds_bucket{route!=\"unmatched\"}[5m])))" }]
+    },
+    {
+      "id": 4, "type": "timeseries", "title": "Saturation (CPU % per instance, AWS only)",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100 }, "overrides": [] },
+      "targets": [{ "refId": "A", "legendFormat": "{{instance_id}}",
+        "expr": "100 * (1 - avg by (instance_id) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])))" }]
+    }
+  ]
+}
